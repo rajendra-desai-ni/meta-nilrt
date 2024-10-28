@@ -83,7 +83,6 @@ RDEPENDS:${PN} += "\
 	openssh-sshd \
 	openvpn \
 	opkg \
-	opkg-keyrings \
 	os-release \
 	pigz \
 	pstore-save \
