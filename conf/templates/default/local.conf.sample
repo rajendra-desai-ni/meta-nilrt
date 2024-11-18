@@ -187,7 +187,9 @@ PACKAGECONFIG:append:pn-nativesdk-qemu = " sdl"
 # concatentation of the currrent $DATE and $TIME - which is not very meaningful
 # and can lead to taskhash issues in recipes which are sensitive to it (like
 # os-release.)
-BUILDNAME ?= "dev-nilrt"
+# Setting the version to majorMinorUpdate based, that wouldn't cause issues with
+# NI-MAX recognising the target.
+BUILDNAME ?= "99.0.0d0"
 
 # CONF_VERSION is increased each time build/conf/ changes incompatibly and is used to
 # track the version of this file when it was generated. This can safely be ignored if
