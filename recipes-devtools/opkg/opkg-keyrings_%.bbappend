@@ -1,6 +1,14 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-PV = "${DISTRO_VERSION}"
+python () {
+    buildname = d.getVar('BUILDNAME')
+    import re
+    # Allow for BUILDNAME to be in the form of major.Minor or major.Minor.Update
+    package_version = re.match(r'(\d+\.\d+\.\d+|\d+\.\d+)', buildname)
+    if package_version:
+        buildname = package_version.group(1)
+    d.setVar('PKGV', buildname)
+}
 
 SRC_URI += " \
 	file://nilrt-feed-2019.gpg \
