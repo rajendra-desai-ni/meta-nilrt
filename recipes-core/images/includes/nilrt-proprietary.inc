@@ -13,9 +13,6 @@ NI_PROPRIETARY_COMMON_PACKAGES = "\
         ni-rt-exec-webservice \
         ni-sdmon \
         ni-service-locator \
-        ni-skyline-file-client \
-        ni-skyline-message-client \
-        ni-skyline-tag-client \
         ni-software-action-services \
         ni-software-installation-websvc \
         ni-ssl-webserver-support \
