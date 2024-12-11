@@ -66,6 +66,7 @@ sshd:x:344:
 rwhod:x:343:
 opensaf:x:342:
 tracing:x:341:
+mosquitto:x:340:
 # free space
 radiusd:x:301:
 postgres:x:28:

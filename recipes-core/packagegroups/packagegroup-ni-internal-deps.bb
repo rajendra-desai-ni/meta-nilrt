@@ -113,3 +113,11 @@ RDEPENDS:${PN} += "\
 	ntp-tickadj \
 	ntp-utils \
 "
+
+# Required by PESS hps, volta, ers-sic
+# TEAM: T&M BU - PESS
+# Contact: Bart Decoutere <leuven.sw@ni.com>
+RDEPENDS:${PN} += "\
+	mosquitto \
+	paho-mqtt-cpp \
+"
