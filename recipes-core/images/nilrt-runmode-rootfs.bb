@@ -43,7 +43,7 @@ bootimg_fixup_x64() {
 }
 
 bootimg_fixup_arm() {
-	mv "${IMAGE_ROOTFS}/${KERNEL_IMAGEDEST}/zImage" "${IMAGE_ROOTFS}/${KERNEL_IMAGEDEST}/linux_runmode.itb"
+	mv "${IMAGE_ROOTFS}/${KERNEL_IMAGEDEST}/fitImage" "${IMAGE_ROOTFS}/${KERNEL_IMAGEDEST}/linux_runmode.itb"
 }
 
 IMAGE_PREPROCESS_COMMAND:append:x64 = " bootimg_fixup_x64; "

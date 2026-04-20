@@ -11,3 +11,13 @@ inherit linux-kernel-base kernel-fit-image
 # Set the version of this recipe to the version of the included kernel
 # (without taking the long way around via PV)
 PKGV = "${@get_kernelversion_file("${STAGING_KERNEL_BUILDDIR}")}"
+
+FIT_DESC = "Kernel fitImage for ${DISTRO_NAME}/${PKGV}/${MACHINE}"
+
+DEPENDS += "u-boot"
+
+do_prepare_bootscript() {
+    # Copy bootscript.txt from u-boot’s deploy dir into our sources
+    cp ${DEPLOY_DIR_IMAGE}/bootscript.txt ${UNPACKDIR}/bootscript.txt
+}
+addtask prepare_bootscript before do_compile after do_configure
