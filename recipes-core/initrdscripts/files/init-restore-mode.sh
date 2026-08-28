@@ -9,6 +9,44 @@ umask 0022
 NIRECOVERY_MOUNTPOINT=/mnt/NIRECOVERY
 MOUNT_NIRECOVERY_USB_TIME=10
 
+network_bootstrap() {
+	if [ "${NETWORK_BOOTSTRAP_ENABLED:-0}" != "1" ]; then
+		return 0
+	fi
+
+	ip link set lo up 2>/dev/null || true
+	for iface in /sys/class/net/*; do
+		dev=${iface##*/}
+		[ "$dev" = "lo" ] && continue
+		ip link set "$dev" up 2>/dev/null || true
+		if command -v udhcpc >/dev/null 2>&1; then
+			udhcpc -i "$dev" -n -q >/dev/null 2>&1 || true
+		fi
+	done
+
+	if command -v sshd >/dev/null 2>&1; then
+		/usr/sbin/sshd -D &
+	elif command -v dropbear >/dev/null 2>&1; then
+		dropbear -R -p 22 &
+	fi
+
+	if [ -n "${PROVISIONING_BUNDLE_URL:-}" ] && command -v curl >/dev/null 2>&1; then
+		mkdir -p /netprov
+		curl -fsSL "${PROVISIONING_BUNDLE_URL}" -o /tmp/ni_provisioning.tar.gz || true
+		if [ -f /tmp/ni_provisioning.tar.gz ]; then
+			tar -xzf /tmp/ni_provisioning.tar.gz -C /netprov || true
+			if [ -d /netprov/payload ]; then
+				PAYLOAD_BASE=/netprov/payload
+				export PAYLOAD_BASE
+			fi
+		fi
+	fi
+
+	if [ -n "${PROVISION_ANSWERS_URL:-}" ] && command -v curl >/dev/null 2>&1; then
+		curl -fsSL "${PROVISION_ANSWERS_URL}" -o /tmp/ni_provisioning.answers || true
+	fi
+}
+
 early_setup() {
 	mkdir -p /proc
 	mkdir -p /sys
@@ -17,6 +55,10 @@ early_setup() {
 	mount -t sysfs sysfs /sys
 	mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 	mount -t devtmpfs none /dev
+
+	if [ "${NETWORK_BOOTSTRAP_ENABLED:-0}" = "1" ]; then
+		network_bootstrap
+	fi
 
 	COUNT=0
 	while [ $COUNT -le "$MOUNT_NIRECOVERY_USB_TIME" ]; do

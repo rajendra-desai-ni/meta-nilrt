@@ -19,6 +19,13 @@ else
 	exit 1
 fi
 
+# Network bootstrapping may have provided a bundle or answer file at runtime.
+# The provisioning engine accepts these via environment variables so it can work
+# from DHCP/SSH-driven targets with no local recovery media.
+if [ -n "${PROVISION_ANSWERS_URL:-}" ]; then
+	source_remote_answer_file
+fi
+
 early_setup "$@"
 
 # Source default answer file to prompt user for all questions
@@ -36,7 +43,7 @@ echo
 
 set_target_from_answer_file
 
-if [[ $restore == "provision-safe" ]]; then
+if [[ $restore == "provision-safe" || $restore == "provision-safe-network" ]]; then
 	if [[ "$PROVISION_REPARTITION_TARGET" != "y" ]]; then
 		ask_for_continue
 	fi
@@ -52,7 +59,7 @@ elif [[ $restore == "backward-migrate" ]]; then
 	source /ni_provisioning.safemode
 	ASK_BEFORE_REBOOT=1
 	PROVISION_REBOOT_METHOD="reboot"
-elif [[ $restore == "provision" ]]; then
+elif [[ $restore == "provision" || $restore == "provision-network" ]]; then
 	if [[ "$PROVISION_PART_NILRT_ID" = "auto" ]]; then
 		ask_for_continue
 
@@ -103,7 +110,7 @@ elif [[ $restore == "provision" ]]; then
 elif [[ $restore == "migrate" ]]; then
 	PROVISION_REBOOT_METHOD="reboot"
 	provision_target onboard
-elif [[ $restore == "get-image" ]]; then
+elif [[ $restore == "get-image" || $restore == "get-image-network" ]]; then
 	echo "Get Image"
 
 	source /sbin/nisystemreplication get
@@ -111,7 +118,7 @@ elif [[ $restore == "get-image" ]]; then
 		PROVISION_REBOOT_METHOD=${RESTART_OPTION}
 	fi
 	ASK_BEFORE_REBOOT=1
-elif [[ $restore == "set-image" ]]; then
+elif [[ $restore == "set-image" || $restore == "set-image-network" ]]; then
 	echo "Set Image"
 
 	source /sbin/nisystemreplication set

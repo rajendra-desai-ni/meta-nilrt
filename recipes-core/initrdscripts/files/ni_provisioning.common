@@ -9,6 +9,9 @@ GRUB_MOUNTPOINT=/var/volatile/nigrub
 BOOTFS_MOUNTPOINT=/var/volatile/nibootfs
 ROOTFS_MOUNTPOINT=/var/volatile/nirootfs
 TEMP_MOUNTPOINT=/var/volatile/temp_dir
+PAYLOAD_BASE="${PAYLOAD_BASE:-/payload}"
+PROVISION_ANSWERS_URL="${PROVISION_ANSWERS_URL:-}"
+PROVISIONING_BUNDLE_URL="${PROVISIONING_BUNDLE_URL:-}"
 TARGET_DISK=""
 TARGET_DISK_SEARCH_TIME=10
 NIRESTORE_LABEL=nirestore
@@ -41,11 +44,31 @@ else
 	printf "Reboot/poweroff will not work automatically!"
 fi
 
+resolve_payload_path()
+{
+	local rel_path="$1"
+	local candidate
+	local candidate_paths=(
+		"${PAYLOAD_BASE}/${rel_path}"
+		"/netprov/${rel_path}"
+	)
+
+	for candidate in "${candidate_paths[@]}"; do
+		if [ -e "$candidate" ]; then
+			echo "$candidate"
+			return 0
+		fi
+	done
+
+	echo "${PAYLOAD_BASE}/${rel_path}"
+}
+
 get_image_info()
 {
 	TOKEN=$1
-
-	grep -Po "(?<=${TOKEN}=).*" /payload/imageinfo
+	local imageinfo_path
+	imageinfo_path=$(resolve_payload_path "imageinfo")
+	grep -Po "(?<=${TOKEN}=).*" "$imageinfo_path"
 }
 
 ask_for_continue()
@@ -350,7 +373,9 @@ elif [ "$ARCH" = "x86_64" ]; then
 		echo "Deploying $IMAGE_DISPLAY_NAME image..."
 
 		# NOTE: `--numeric-owner` option: always use numbers for user/group names (ignore symbolic names)
-		TAR_ERROR="`tar -x -j --numeric-owner -f /payload/factory-image.tar.bz2 -C $NILRT_MOUNTPOINT 2>&1`" || die "$TAR_ERROR"
+		local image_tar_path
+		image_tar_path=$(resolve_payload_path "factory-image.tar.bz2")
+		TAR_ERROR="`tar -x -j --numeric-owner -f "$image_tar_path" -C $NILRT_MOUNTPOINT 2>&1`" || die "$TAR_ERROR"
 
 		# Set hostname, if configured
 		if [ -n "$PROVISION_HOSTNAME" ]; then
@@ -423,13 +448,16 @@ elif [ "$ARCH" = "x86_64" ]; then
 
 			echo "Deploying bundles to niboota and nibootb slots..."
 
+			local bundle_path
+			bundle_path=$(resolve_payload_path "niboot.raucb")
+
 			# Override niboota to install to nibootb slot
-			$run_rauc --override-boot-slot=niboota install /payload/niboot.raucb 2>&1 || die "RAUC failed to install bundle to nibootb"
+			$run_rauc --override-boot-slot=niboota install "$bundle_path" 2>&1 || die "RAUC failed to install bundle to nibootb"
 			# Mark-good nibootb to install them at front of EFI BootOrder
 			$run_rauc --override-boot-slot=nibootb status mark-good niboot.1 2>&1 || die "RAUC failed to mark-good niboot.1 (nibootb)"
 
 			# Override nibootb to install to niboota slot
-			$run_rauc --override-boot-slot=nibootb install /payload/niboot.raucb 2>&1 || die "RAUC failed to install bundle to niboota"
+			$run_rauc --override-boot-slot=nibootb install "$bundle_path" 2>&1 || die "RAUC failed to install bundle to niboota"
 			# Mark-good niboota to install them at front of EFI BootOrder
 			$run_rauc --override-boot-slot=niboota status mark-good niboot.0 2>&1 || die "RAUC failed to mark-good niboot.0 (niboota)"
 
@@ -468,10 +496,12 @@ elif [ "$ARCH" = "x86_64" ]; then
 		elif [ "$PROVISION_BOOT_SCHEME" == "efi-auto" ]; then
 			echo "Installing automatic EFI boot loader..."
 
+			local bundle_path
+			bundle_path=$(resolve_payload_path "niboot.raucb")
 			mkdir /mnt/efi-auto /mnt/efi-auto/bundle /mnt/efi-auto/niboota
 
 			# Write image to slot 0 (niboota)
-			mount -o ro /payload/niboot.raucb /mnt/efi-auto/bundle
+			mount -o ro "$bundle_path" /mnt/efi-auto/bundle
 			mount -o rw /dev/niboot/niboota /mnt/efi-auto/niboota
 
 			local img_written=false
@@ -688,9 +718,31 @@ source_default_answer_file()
 	source "/ni_provisioning.answers.default"
 }
 
+source_remote_answer_file()
+{
+	if [ -z "${PROVISION_ANSWERS_URL:-}" ]; then
+		return 0
+	fi
+
+	if command -v curl >/dev/null 2>&1; then
+		curl -fsSL "${PROVISION_ANSWERS_URL}" -o /tmp/ni_provisioning.answers || return 1
+		if check_answer_file "/tmp/ni_provisioning.answers"; then
+			print_verbose "Using network answer file from ${PROVISION_ANSWERS_URL}"
+			source "/tmp/ni_provisioning.answers"
+			return 0
+		fi
+	fi
+
+	return 1
+}
+
 source_answer_file()
 {
 	print_verbose "Searching for answer files:"
+
+	if source_remote_answer_file; then
+		return
+	fi
 
 	# first check for embedded answer file on the boot disk
 	if check_answer_file "/ni_provisioning.answers"; then
