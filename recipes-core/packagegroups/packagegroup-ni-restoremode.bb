@@ -43,7 +43,6 @@ RDEPENDS:${PN}:append:x64 = "\
 	grub-editenv        \
 	grub-efi            \
 	ni-smbios-helper    \
-	rauc                \
 	"
 
 RDEPENDS:${PN}:append:xilinx-zynq = "\
