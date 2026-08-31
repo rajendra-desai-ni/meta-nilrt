@@ -9,18 +9,65 @@ umask 0022
 NIRECOVERY_MOUNTPOINT=/mnt/NIRECOVERY
 MOUNT_NIRECOVERY_USB_TIME=10
 
+find_udhcpc() {
+	if command -v udhcpc >/dev/null 2>&1; then
+		echo "udhcpc"
+		return 0
+	fi
+
+	if [ -x /usr/lib/busybox/sbin/udhcpc ]; then
+		echo "/usr/lib/busybox/sbin/udhcpc"
+		return 0
+	fi
+
+	if command -v busybox >/dev/null 2>&1; then
+		echo "busybox udhcpc"
+		return 0
+	fi
+
+	return 1
+}
+
+configure_static_network() {
+	local dev="$1"
+	local ipv4_cidr="${NETWORK_BOOTSTRAP_IPV4:-}"
+	local gateway="${NETWORK_BOOTSTRAP_GATEWAY:-}"
+	local dns_server="${NETWORK_BOOTSTRAP_DNS:-}"
+
+	if [ -z "$ipv4_cidr" ]; then
+		return 1
+	fi
+
+	ip address flush dev "$dev" scope global 2>/dev/null || true
+	ip address add "$ipv4_cidr" dev "$dev" || return 1
+
+	if [ -n "$gateway" ]; then
+		ip route replace default via "$gateway" dev "$dev" || return 1
+	fi
+
+	if [ -n "$dns_server" ]; then
+		echo "nameserver $dns_server" > /etc/resolv.conf
+	fi
+
+	return 0
+}
+
 network_bootstrap() {
+	local udhcpc_cmd
+
 	if [ "${NETWORK_BOOTSTRAP_ENABLED:-0}" != "1" ]; then
 		return 0
 	fi
+
+	udhcpc_cmd=$(find_udhcpc || true)
 
 	ip link set lo up 2>/dev/null || true
 	for iface in /sys/class/net/*; do
 		dev=${iface##*/}
 		[ "$dev" = "lo" ] && continue
 		ip link set "$dev" up 2>/dev/null || true
-		if command -v udhcpc >/dev/null 2>&1; then
-			udhcpc -i "$dev" -n -q >/dev/null 2>&1 || true
+		if ! configure_static_network "$dev" && [ -n "$udhcpc_cmd" ]; then
+			$udhcpc_cmd -i "$dev" -n -q -t 5 -T 3 || true
 		fi
 	done
 
@@ -133,6 +180,24 @@ mount_nirecovery_usb()
 	fi
 }
 
+load_recovery_modules() {
+	# Load input and common VM platform/network drivers before network bootstrap
+	# so recovery can discover NICs and request DHCP during early setup.
+	modprobe atkbd 2> /dev/null
+	modprobe i8042 2> /dev/null
+	modprobe e1000 2> /dev/null
+	modprobe e1000e 2> /dev/null
+	modprobe igb 2> /dev/null
+	modprobe virtio_net 2> /dev/null
+	modprobe vmxnet3 2> /dev/null
+	modprobe hv_vmbus 2> /dev/null
+	modprobe hv_balloon 2> /dev/null
+	modprobe hv_storvsc 2> /dev/null
+	modprobe hv_utils 2> /dev/null
+	modprobe hyperv-keyboard 2> /dev/null
+}
+
+load_recovery_modules
 early_setup
 
 start_serial_console &
@@ -140,14 +205,6 @@ start_serial_console &
 # Arch-specific set-up
 if [[ $ARCH == "x86_64" ]]; then
 	disable_x64_cstates
-	# support VMWare image keyboard
-	modprobe atkbd 2> /dev/null
-	modprobe i8042 2> /dev/null
-	modprobe hv_vmbus 2> /dev/null
-	modprobe hv_balloon 2> /dev/null
-	modprobe hv_storvsc 2> /dev/null
-	modprobe hv_utils 2> /dev/null
-	modprobe hyperv-keyboard 2> /dev/null
 	remove_bootmode 2> /dev/null
 fi
 

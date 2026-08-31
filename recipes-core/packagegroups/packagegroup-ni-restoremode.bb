@@ -8,6 +8,7 @@ inherit packagegroup
 RDEPENDS:${PN} += "\
 	base-passwd \
 	bash \
+	busybox \
 	bzip2 \
 	coreutils \
 	dosfstools \
@@ -20,6 +21,7 @@ RDEPENDS:${PN} += "\
 	gptfdisk \
 	grep \
 	init-restore-mode \
+	iproute2 \
 	kmod \
 	ni-systemreplication \
 	parted \
@@ -41,6 +43,7 @@ RDEPENDS:${PN}:append:x64 = "\
 	grub-editenv        \
 	grub-efi            \
 	ni-smbios-helper    \
+	rauc                \
 	"
 
 RDEPENDS:${PN}:append:xilinx-zynq = "\
@@ -50,10 +53,15 @@ RDEPENDS:${PN}:append:xilinx-zynq = "\
 
 RRECOMMENDS:${PN}:x64 = "\
 	kernel-module-atkbd \
+	kernel-module-e1000 \
+	kernel-module-e1000e \
 	kernel-module-hyperv-keyboard \
 	kernel-module-hv-storvsc \
 	kernel-module-hv-vmbus \
 	kernel-module-hv-utils \
 	kernel-module-hv-balloon \
+	kernel-module-igb \
 	kernel-module-i8042 \
+	kernel-module-virtio-net \
+	kernel-module-vmxnet3 \
 "

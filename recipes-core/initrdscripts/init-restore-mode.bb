@@ -27,7 +27,7 @@ SRC_URI:append:x64 = "\
 	file://grub.cfg	\
 "
 
-RDEPENDS:${PN} += "bash curl openssh"
+RDEPENDS:${PN} += "bash busybox curl iproute2 openssh"
 
 do_install() {
 	install -d ${D}${sysconfdir}/ni-provisioning
