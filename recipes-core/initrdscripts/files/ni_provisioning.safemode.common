@@ -471,4 +471,4 @@ sanity_check()
 	print_done
 }
 
-SOURCE_DIR=/payload
+SOURCE_DIR=${PAYLOAD_BASE:-/payload}

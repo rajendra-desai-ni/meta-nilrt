@@ -59,6 +59,11 @@ network_bootstrap() {
 		return 0
 	fi
 
+	# In network bootstrap mode, always resolve payload files from /netprov.
+	# This avoids falling back to the recovery media's built-in /payload.
+	PAYLOAD_BASE=/netprov/payload
+	export PAYLOAD_BASE
+
 	udhcpc_cmd=$(find_udhcpc || true)
 
 	ip link set lo up 2>/dev/null || true
@@ -82,10 +87,6 @@ network_bootstrap() {
 		curl -fsSL "${PROVISIONING_BUNDLE_URL}" -o /tmp/ni_provisioning.tar.gz || true
 		if [ -f /tmp/ni_provisioning.tar.gz ]; then
 			tar -xzf /tmp/ni_provisioning.tar.gz -C /netprov || true
-			if [ -d /netprov/payload ]; then
-				PAYLOAD_BASE=/netprov/payload
-				export PAYLOAD_BASE
-			fi
 		fi
 	fi
 
