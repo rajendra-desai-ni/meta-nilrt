@@ -53,13 +53,6 @@ disable_x64_cstates() {
 	done
 }
 
-load_x64_network_modules() {
-	# Include common physical and virtual NIC drivers used in recovery scenarios.
-	for mod in e1000 e1000e i40e igb igc ixgbe tg3 virtio_pci virtio_net; do
-		modprobe "$mod" 2> /dev/null
-	done
-}
-
 show_console() {
 	while true; do
 		echo ""
@@ -108,7 +101,6 @@ if [[ $ARCH == "x86_64" ]]; then
 	# support VMWare image keyboard
 	modprobe atkbd 2> /dev/null
 	modprobe i8042 2> /dev/null
-	load_x64_network_modules
 	modprobe hv_vmbus 2> /dev/null
 	modprobe hv_balloon 2> /dev/null
 	modprobe hv_storvsc 2> /dev/null
@@ -118,7 +110,13 @@ if [[ $ARCH == "x86_64" ]]; then
 fi
 
 if [[ $ARCH =~ ^(x86_64|armv7l)$ ]]; then
-	/ni_provisioning
+	if [ -x /etc/init.d/ni-restore-provisioning ]; then
+		/etc/init.d/ni-restore-provisioning start
+		sync
+		show_console
+	fi
+	echo ""
+	echo "ERROR: /etc/init.d/ni-restore-provisioning not found or not executable."
 else
 	echo ""
 	echo "ERROR: ARCH=$ARCH is not supported by provisioning tool."
